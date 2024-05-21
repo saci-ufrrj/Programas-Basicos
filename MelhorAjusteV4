@@ -1,0 +1,147 @@
+# Sobre as funções em python: https://docs.python.org/3/library/functions.html
+# Se essa é a sua primeira vez nesse tipo de estudo, sugerimos começar a ler o programa da seção 2
+
+##################################################################################
+# Seção 1
+# Importação das bibliotecas:
+# São estruturas que definimos antes dos programas, para serem utilizadas ao longo do programa
+##################################################################################
+
+import matplotlib.pyplot as plt #1 abaixo
+import numpy as np #2 abaixo
+from scipy.integrate import quad #3 abaixo
+import math #4 abaixo
+
+##################################################################################
+# Quer aprender mais sobre as bibliotecas? Cheque os links abaixo
+
+# 1 = https://matplotlib.org/stable/users/index
+# 2 = https://numpy.org/doc/stable/user/index.html#user
+# 3 = https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.quad.html
+# 4 = https://docs.python.org/3/library/math.html
+
+##################################################################################
+# Seção 2
+# Dados Observacionais
+# Os valores dos dados que serão utilizados ao longo do programa precisam estar associados a variáveis
+##################################################################################
+
+z_dLobs, dLobs, err_dLobs = np.loadtxt('DadosBasico.txt', usecols=(0,1,2),unpack=True) # Importação dos dados, onde z_dLobs, dLobs e 
+                                                                                       # err_dLobs são as colunas a serem utilizadas
+
+##################################################################################
+# Obs 1: Note que o arquivo .txt ou .csv deverá estar na mesma pasta do programa. 
+##################################################################################
+
+##################################################################################
+# Seção 3
+# Gráficos dos dados observacionais
+##################################################################################
+
+plt.subplots(figsize=(12,8))   # Proporção da figura
+plt.xlabel(r'$z$',fontsize=16) # Legenda do eixo x
+plt.ylabel(r'$d_L^{obs}(Mpc)$',fontsize=16) # Legenda do eixo y
+
+plt.errorbar(z_dLobs,dLobs,yerr=err_dLobs,linestyle='',marker='.',color='black',label=r'Observational data points') # Plot das barras de erro
+
+plt.show() 
+
+##################################################################################
+# Obs 1: Para ter acesso a mais estilos de linestyle, markers, cores, etc, entre nos seguintes links
+
+# Markers = https://matplotlib.org/stable/api/markers_api.html
+# Linestyle = https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html
+# Colors = https://matplotlib.org/stable/gallery/color/named_colors.html
+##################################################################################
+
+##################################################################################
+# Seção 4: Parâmetros fixos
+##################################################################################
+
+Om = 0.3
+#$H0 = 70
+
+##################################################################################
+# Seção 4: Parâmetros livres
+##################################################################################
+
+FreePar = 1
+H0var = np.arange(60,90,0.1)
+
+##################################################################################
+# Seção 5: Equações recorrentes ao longo do programa
+# Distância comóvel para LCDM
+##################################################################################
+
+def integrand (z,Om): 
+    return 1./np.sqrt(Om*(1.+z)**3.+(1.-Om))
+
+##################################################################################
+### Aqui começam as operações/cálculos de fato do programa ###
+##################################################################################
+
+##################################################################################
+# Seção 6:
+# Cálculo do chi^2
+##################################################################################
+
+chi2_par = [0]*len(H0var)
+
+for j in range (0,len(H0var)):
+    for i in range (0,len(z_dLobs)):
+        integral = quad(integrand,0.,z_dLobs[i],args=(Om))
+        dc = integral [0]
+        dLth = (1+z_dLobs[i])*(300000./H0var[j])*dc
+        chi2_par[j] = chi2_par[j] + ( (dLth - dLobs[i])**2) / ((err_dLobs[i])**2)
+
+##################################################################################
+# Seção 7:
+# Gráfico do chi^2
+##################################################################################
+
+plt.subplots(figsize=(12,8))
+plt.xlabel(r'$z$',fontsize=16)
+plt.ylabel(r'$chi^2$',fontsize=16)
+plt.plot(H0var,chi2_par,color='black')
+
+plt.show()
+
+##################################################################################
+# Seção 8:
+# Melhor ajuste
+##################################################################################
+
+chi2_min = min(chi2_par) # Encontra o menor valor do chi^2 (também chamado de chi^2 mínimo)
+H0_bf = H0var[chi2_par.index(min(chi2_par))] # Encontra o melhor ajuste do parâmetro (no caso H0),
+                                            # que é o valor do parâmetro correpondente ao chi^2 mínimo.
+print('Reduced chi^2 = ', chi2_min/(len(z_dLobs)-FreePar))
+print('Best fit of H0 = ', H0_bf)
+
+##################################################################################
+# Seção 8:
+# Gráfico de Melhor ajuste
+##################################################################################
+
+plt.subplots(figsize=(12,8))
+plt.xlabel(r'$z$',fontsize=16)
+plt.ylabel(r'$d_L(Mpc)$',fontsize=16)
+
+dLbf = [0]*len(z_dLobs)
+
+for i in range (0,len(z_dLobs)):
+    integral = quad(integrand,0.,z_dLobs[i],args=(Om))
+    dc = integral [0]
+    dLbf[i] = (1+z_dLobs[i])*(300000./H0_bf)*dc
+
+plt.plot(z_dLobs,dLbf,color='blue',label=r'Melhor ajuste: $H_0 =$ %.2f'%H0_bf)
+plt.errorbar(z_dLobs,dLobs,yerr=err_dLobs,linestyle='',marker='.',color='black',label=r'Pontos Observacionais')
+
+legend=plt.legend(loc='upper left',fontsize=16) # Plotar legenda da figura
+legend.get_frame().set_alpha(0.5)
+
+plt.show()
+
+
+
+
+
